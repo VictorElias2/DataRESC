@@ -1,5 +1,5 @@
 ---
-title: "Análise de salários"
+title: "Base de conhecimento do trabalho de Auditoria de Sistemas"
 author: "Victor e Jonatas"
 format: pdf
 editor: visual
@@ -11,11 +11,11 @@ library(tidyverse)
 
 readr::guess_encoding("dados/Remuneracao.csv") # Verifica qual encoding do arquivo
 
-remuneracao <- read_csv2("dados/Remuneracao.csv", locale = locale(encoding = "ISO-8859-2"))
+dados <- read_csv2("dados/Remuneracao.csv", locale = locale(encoding = "ISO-8859-2"))
 
 ```
 
-## Remuneração salarial de servidores públicos
+## IDEIA 1: Salários de servidores públicos.
 
 ## Referentes a Junho/25
 
@@ -23,15 +23,101 @@ Resumo principal
 
 ```{r, render=F}
 
-summary(remuneracao)
+summary(dados)
 
 ```
 
-You can add options to executable code like this
+Verifica se existe 0 em alguma linha na tabela:
 
 ```{r}
-remuneracao %>% 
+dados %>% 
   select(where(~ all(. == 0, na.rm = F)))
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Conta quantos valores existem abaixo de zero em Salário Líquido:
+
+```{r}
+
+dados %>% 
+  filter(`TOTAL LIQUÍDO (R$)` < 0) %>% 
+  count()
+
+```
+
+Conta salários acima de 100 mil
+
+```{r}
+
+dados %>% 
+  filter(`TOTAL LIQUÍDO (R$)` > 100000) %>% 
+  count()
+
+```
+
+# IDEIA 2: Disponibilidade de Internet nas escolas públicas do Brasil
+
+Analisar estes dados serão viscerais para entendermos quais escolas não tem acesso a internet, os dados trazem uma boa base de informação para agregarmos a uma aditoria coesa.
+
+```{r}
+
+dados <- readxl::read_xlsx("dados/base-escolas-simet-2025-08-22.xlsx")
+
+summary(dados)
+
+```
+
+## Análise de dados primária
+
+Filtrando colunas principais
+
+```{r}
+
+dados <- dados %>% 
+  select(-escolar_co_entidade, -escolar_nu_ano_censo, -escolar_co_uf, -escolar_co_municipio, -escolar_co_distrito, -sector_id, -simet_asn)
+
+```
+
+Eletronicos por matrícula, onde pelo menos nas escolas existem computadores portateis, desktops e tablets. Apenas 13.986 escolas tem todos os meios de aparelhos citados anteriormente.
+
+```{r}
+
+compAluno <- dados %>% 
+  filter(escolar_qt_comp_portatil_aluno > 0, escolar_qt_desktop_aluno > 0,
+         escolar_qt_tablet_aluno >0)
+  
+sum(compAluno$escolar_qt_desktop_aluno, compAluno$escolar_qt_tablet_aluno, compAluno$escolar_qt_comp_portatil_aluno) / sum(compAluno$escolar_qtematriculas)
+  
+
+```
+
+Eletronicos por matricula, desconsiderando se escolas possuem computadores portateis, desktops ou tablets.
+
+```{r}
+sum(dados$escolar_qt_desktop_aluno, dados$escolar_qt_tablet_aluno, dados$escolar_qt_comp_portatil_aluno) / sum(dados$escolar_qtematriculas)
+```
+
+Eletronicos por matricula, desconsiderando se escolas possuem computadores portateis, desktops ou tablets por região.
+
+```{r}
+
+dados %>% 
+  filter(!is.na(nm_regiao)) %>% 
+  group_by(nm_regiao) %>% 
+  summarise(Res = sum(escolar_qt_desktop_aluno, escolar_qt_tablet_aluno, escolar_qt_comp_portatil_aluno) / sum(escolar_qtematriculas))
+```
+
+Eletronicos por matricula, considerando se escolas possuem computadores portateis, desktops e tablets por região.
+
+```{r}
+dados %>% 
+  filter(!is.na(nm_regiao), escolar_qt_comp_portatil_aluno > 0, escolar_qt_desktop_aluno > 0,
+         escolar_qt_tablet_aluno >0) %>% 
+  group_by(nm_regiao) %>% 
+  summarise(Res = sum(escolar_qt_desktop_aluno, escolar_qt_tablet_aluno, escolar_qt_comp_portatil_aluno) / sum(escolar_qtematriculas))
+```
+
+### Aula 22/08/2025
+
+Definir quem vai ser responsável: por ser o gestor.
+
+E definir quem vai ser responsável pelos dados e etc.
