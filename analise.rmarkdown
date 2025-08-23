@@ -1,0 +1,72 @@
+---
+title: "Análise de salários"
+author: "Victor e Jonatas"
+format: pdf
+editor: visual
+---
+
+```{r}
+
+library(tidyverse)
+
+readr::guess_encoding("dados/Remuneracao.csv") # Verifica qual encoding do arquivo
+
+remuneracao <- read_csv2("dados/Remuneracao.csv", locale = locale(encoding = "ISO-8859-2"))
+
+```
+
+
+
+## Remuneração salarial de servidores públicos
+
+## Referentes a Junho/25
+
+Resumo principal
+
+
+
+```{r, render=F}
+
+summary(remuneracao)
+
+```
+
+
+
+Verifica se existe 0 em alguma linha na tabela:
+
+
+
+```{r}
+remuneracao %>% 
+  select(where(~ all(. == 0, na.rm = F)))
+```
+
+
+
+Conta quantos valores existem abaixo de zero em Salário Líquido:
+
+
+
+```{r}
+
+remuneracao %>% 
+  filter(`TOTAL LIQUÍDO (R$)` < 0) %>% 
+  count()
+
+```
+
+
+
+Conta salários acima de 100 mil
+
+
+
+```{r}
+
+remuneracao %>% 
+  filter(`TOTAL LIQUÍDO (R$)` > 100000) %>% 
+  count()
+
+```
+
