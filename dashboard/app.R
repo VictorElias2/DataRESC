@@ -3,9 +3,7 @@ library(shinydashboard)
 library(dplyr)
 library(readxl)
 
-skinColor <- "green"
-
-ui <- dashboardPage(skin = skinColor,
+ui <- dashboardPage(skin = "green",
   
   dashboardHeader(title = "Dataresc"),
   dashboardSidebar(
@@ -32,7 +30,8 @@ ui <- dashboardPage(skin = skinColor,
                 valueBoxOutput("totalAlunos", width = 4),
                 valueBoxOutput("totalAparelhos", width = 4),
                 valueBoxOutput("mediaDownloadEntorno", width = 4),
-                valueBoxOutput("mediaUploadEntorno", width = 4)
+                valueBoxOutput("mediaUploadEntorno", width = 4),
+                valueBoxOutput("mediaKbytesAluno", width = 4)
                 
                 
               )
@@ -40,7 +39,6 @@ ui <- dashboardPage(skin = skinColor,
       
       # Seção de auditoria do sistema, auditoria
       tabItem(tabName = "auditoria",
-              skinColor = "red",
               fluidPage(
                 h1("Auditoria")
               )
@@ -78,7 +76,7 @@ server <- function(input, output) {
     valueBox(
       value = dbGetQuery(conn, "select sum(escolar_qtematriculas) from dados;"),
       subtitle = "Quantidade de alunos",
-      icon = icon("school"),
+      icon = icon("users"),
       color = "green"
     )
   })
@@ -87,7 +85,7 @@ server <- function(input, output) {
     valueBox(
       value = dbGetQuery(conn, "select sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) from dados;"),
       subtitle = "Quantidade aparelhos eletrônicos",
-      icon = icon("school"),
+      icon = icon("computer"),
       color = "green"
     )
   })
@@ -96,7 +94,7 @@ server <- function(input, output) {
     valueBox(
       value = dbGetQuery(conn, "select round(avg(entorno_download), 2) from dados;"),
       subtitle = "Média de download no entorno das escolas",
-      icon = icon("school"),
+      icon = icon("download"),
       color = "green"
     )
   })
@@ -105,7 +103,16 @@ server <- function(input, output) {
     valueBox(
       value = dbGetQuery(conn, "select round(avg(entorno_upload), 2) from dados;"),
       subtitle = "Média de upload no entorno das escolas",
-      icon = icon("school"),
+      icon = icon("upload"),
+      color = "green"
+    )
+  })
+  
+  output$mediaKbytesAluno <- renderValueBox({
+    valueBox(
+      value = dbGetQuery(conn, "select round(avg(Down_kbps_por_aluno), 2) from dados;"),
+      subtitle = "Média em Kbps de Downloads por aluno das escolas",
+      icon = icon("download"),
       color = "green"
     )
   })
