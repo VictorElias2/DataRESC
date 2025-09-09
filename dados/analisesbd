@@ -1,0 +1,50 @@
+
+-- DADOS PARA EXIBIR NA PARTE DE INICIO
+
+-- VALUEBOXES
+
+-- Total de escolas sem laboratório de informática
+SELECT count(escolar_in_laboratorio_informatica) as total from dados where escolar_in_laboratorio_informatica != 'Sim';
+
+-- Total de escolas com laboratório de informática
+SELECT count(escolar_in_laboratorio_informatica) as total from dados where escolar_in_laboratorio_informatica = 'Sim';
+
+-- Quantidade de aparelhos eletrônicos total sem erros
+select sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) as totals from dados
+where escolar_qt_comp_portatil_aluno < 3000 AND escolar_qt_desktop_aluno < 3000 AND escolar_qt_tablet_aluno < 3000;
+
+-- Média de Download no entorno da escola sem erros
+select round(avg(entorno_download), 2) from dados where entorno_download < 30000;
+
+-- Média de upload no entorno da escola sem erros
+select round(avg(entorno_upload), 2) from dados where entorno_upload < 30000;
+
+-- GRÁFICOS
+
+-- Matriculas por região
+SELECT nm_regiao, sum(escolar_qtematriculas) as matriculas 
+from dados GROUP by nm_regiao;
+
+-- Matriculas por localização da escola - urbana ou rural
+SELECT escolar_tp_localizacao, sum(escolar_qtematriculas) as totalMatriculas from dados group by escolar_tp_localizacao;
+
+-- Eletrônicos por regiao - sem erros
+SELECT nm_regiao, sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) as totals from dados
+where escolar_qt_comp_portatil_aluno < 3000 AND escolar_qt_desktop_aluno < 3000 AND escolar_qt_tablet_aluno < 3000 
+GROUP by nm_regiao;
+
+-- Computadores por matrícula (por região) - Sem erros
+SELECT nm_regiao, sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) * 1.0 / sum(escolar_qtematriculas) as totals from dados
+where escolar_qt_comp_portatil_aluno < 3000 AND escolar_qt_desktop_aluno < 3000 AND escolar_qt_tablet_aluno < 3000 AND escolar_qtematriculas < 3000
+GROUP by nm_regiao;
+
+
+
+
+
+
+-- DADOS PARA EXIBIR NA PARTE DE AUDITORIA
+
+-- Quantas linhas com escolas problemáticas (quantidade de eletronicos acima de 3000)
+select count(*) as total from dados 
+where escolar_qt_comp_portatil_aluno > 3000 or escolar_qt_desktop_aluno > 3000 or escolar_qt_tablet_aluno > 3000;
