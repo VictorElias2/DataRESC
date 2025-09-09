@@ -64,6 +64,8 @@ library(tidyverse)
 
 dados <- readxl::read_xlsx("dados/base-escolas-simet-2025-08-22.xlsx")
 
+dbWriteTable(conn, "dados.sqlite", dados)
+
 summary(dados)
 
 ```
