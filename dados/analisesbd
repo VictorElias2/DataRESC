@@ -25,6 +25,10 @@ select round(avg(entorno_upload), 2) from dados where entorno_upload < 30000;
 SELECT nm_regiao, sum(escolar_qtematriculas) as matriculas 
 from dados GROUP by nm_regiao;
 
+-- Escolas por região
+select nm_regiao, count(escolar_no_entidade) as escolas
+from dados group by nm_regiao;
+
 -- Matriculas por localização da escola - urbana ou rural
 SELECT escolar_tp_localizacao, sum(escolar_qtematriculas) as totalMatriculas from dados group by escolar_tp_localizacao;
 

@@ -1,0 +1,203 @@
+---
+title: "Analise"
+format: pdf
+---
+
+
+
+# Disponibilidade de Internet nas escolas públicas do Brasil
+
+Fonte dos dados: [https://conectividadenaeducacao.nic.br](https://conectividadenaeducacao.nic.br/#home)
+
+Pesquisado em https://basedosdados.org
+
+Analisar estes dados serão viscerais para entendermos quais escolas não tem acesso a internet, os dados trazem uma boa base de informação para agregarmos a uma aditoria coesa.
+
+
+
+```{r}
+
+library(tidyverse) # Importa bibliteca tidyverse (tudo-em-um)
+
+dados <- readxl::read_xlsx("dados/base-escolas-simet-2025-08-22.xlsx") # Lê dados
+
+summary(dados) # Resume os dados
+
+```
+
+
+
+## Análise de dados primária
+
+Filtrando colunas principais
+
+
+
+```{r}
+
+# Elimina colunas consideradas não fundamentais (importantes)
+dados <- dados %>% 
+  select(-escolar_co_entidade, -escolar_nu_ano_censo, -escolar_co_uf, -escolar_co_municipio, -escolar_co_distrito, -sector_id, -simet_asn)
+
+```
+
+
+
+##### OBS: As análises abaixo consideram os erros extraordinários nos dados, erros que estão explicados logo abaixo.
+
+Eletronicos por matrícula, onde pelo menos nas escolas existem computadores portateis, desktops e tablets. Apenas 13.986 escolas tem todos os meios de aparelhos citados anteriormente.
+
+
+
+```{r}
+
+# Filtra dados onde comp. portáteis, desktops e tables são maiores que 0
+compAluno <- dados %>% 
+  filter(escolar_qt_comp_portatil_aluno > 0, escolar_qt_desktop_aluno > 0,
+         escolar_qt_tablet_aluno >0)
+  
+# Faz a média de computadores por aluno das escolas considerando filtro acima
+sum(compAluno$escolar_qt_desktop_aluno, compAluno$escolar_qt_tablet_aluno, compAluno$escolar_qt_comp_portatil_aluno) / sum(compAluno$escolar_qtematriculas)
+  
+
+```
+
+
+
+Eletronicos por matricula, desconsiderando se escolas possuem computadores portateis, desktops ou tablets.
+
+
+
+```{r}
+# Faz a média de computadores por aluno em todas as escolas
+sum(dados$escolar_qt_desktop_aluno, dados$escolar_qt_tablet_aluno, dados$escolar_qt_comp_portatil_aluno) / sum(dados$escolar_qtematriculas)
+```
+
+
+
+Eletronicos por matricula, desconsiderando se escolas possuem computadores portateis, desktops ou tablets por região.
+
+
+
+```{r}
+# Faz a média de computadores por aluno em todas as escolas e exibe a diferença de cada estado
+dados %>% 
+  filter(!is.na(nm_regiao)) %>% 
+  group_by(nm_regiao) %>% 
+  summarise(Res = sum(escolar_qt_desktop_aluno, escolar_qt_tablet_aluno, escolar_qt_comp_portatil_aluno) / sum(escolar_qtematriculas))
+```
+
+
+
+Eletronicos por matricula, considerando se escolas possuem computadores portateis, desktops e tablets por região.
+
+
+
+```{r}
+# Faz a média de computadores por aluno em todas as escolas que tem ao menos 1 computador desktop e portatil e 1 tablet; e mostra a diferença de cada estado
+dados %>% 
+  filter(!is.na(nm_regiao), escolar_qt_comp_portatil_aluno > 0, escolar_qt_desktop_aluno > 0,
+         escolar_qt_tablet_aluno >0) %>% 
+  group_by(nm_regiao) %>% 
+  summarise(Res = sum(escolar_qt_desktop_aluno, escolar_qt_tablet_aluno, escolar_qt_comp_portatil_aluno) / sum(escolar_qtematriculas))
+```
+
+
+
+## Definição de tema: Dados de rede das escolas públicas brasileiras.
+
+Coletado dia 29/08/2025
+
+-   Dados do INEP mostram que no Brasil há 160.939 escolas públicas de todas as etapas e modalidades de ensinos.
+
+-   Nos dados coletados indicam que tivemos registros de 137.847 escolas públicas em todas as unidades federativas. Existem 14.37% de escolas sem registro sobre as redes e internet (23.092).
+
+## Indícios de erros de dados
+
+No dia 26/08, durante uma análise preliminar, indentificamos uma falha problemática: o indício de números abusivos nas colunas que exibiam a quantidades de aparelhos nas escolas. São eles:
+
+Dados problemáticos: aqueles que ultrapassam mais de 8000, geralmente exibidos em 8888, ou em alguns casos 88888.
+
+
+
+```{r}
+# Filtra quantidades de computadores e notebooks, tablets onde estão acima de 8000; Quais chamamos de erros extraordinários.
+dados %>% 
+  filter(escolar_qt_comp_portatil_aluno > 8000 | escolar_qt_desktop_aluno > 8000 | escolar_qt_tablet_aluno > 8000) %>% 
+  count()
+```
+
+
+
+### Localização de escolas com dados problemáticos
+
+Os dados que apresentam mais problemáticos se norteiam na região Sudeste.
+
+
+
+```{r}
+# Filtra quantidades de computadores e notebooks, tablets onde estão acima de 8000; Por região.
+dados %>% 
+  filter(escolar_qt_comp_portatil_aluno > 8000 | escolar_qt_desktop_aluno > 8000 | escolar_qt_tablet_aluno > 8000) %>%
+  group_by(nm_regiao) %>% 
+  count()
+```
+
+```{r}
+# Filtra quantidades de computadores e notebooks, tablets onde estão acima de 8000; Por faixa de velocidade.
+dados %>% 
+  filter(escolar_qt_comp_portatil_aluno > 8000 | escolar_qt_desktop_aluno > 8000 | escolar_qt_tablet_aluno > 8000) %>%  
+  group_by(faixa_velocidade) %>% 
+  count()
+
+```
+
+```{r}
+
+# dados %>% 
+#   filter(escolar_qt_comp_portatil_aluno > 8000 | escolar_qt_desktop_aluno > 8000 | escolar_qt_tablet_aluno > 8000) %>%
+#   left_join(empresa1, empresa2) %>% 
+#   count() %>% 
+#   arrange(desc(n))
+
+```
+
+
+
+### Transfere dados para SQLITE
+
+
+
+```{r}
+
+library(RSQLite)
+dados <-  read_xlsx("../dados/base-escolas-simet-2025-08-22.xlsx")
+conn <- dbConnect(SQLite(), "../analise-auditoria/dados/dados.sqlite")
+dbWriteTable(con, "dados", dados)
+
+```
+
+
+
+## Gráficos
+
+#### Mátriculas por região
+
+
+
+```{r}
+
+library(ggplot2)
+
+temp <- dbGetQuery(conn, "SELECT nm_regiao, sum(escolar_qtematriculas) as matriculas
+                              from dados GROUP by nm_regiao;")
+temp %>% 
+    ggplot(aes(x = temp$nm_regiao, y = temp$matriculas)) +
+    geom_col()
+```
+
+
+
+#### Mátriculas por localização
+
+

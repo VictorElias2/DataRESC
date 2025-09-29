@@ -31,7 +31,12 @@ ui <- dashboardPage(skin = "green",
                 valueBoxOutput("totalAparelhos", width = 4),
                 valueBoxOutput("mediaDownloadEntorno", width = 4),
                 valueBoxOutput("mediaUploadEntorno", width = 4),
-                valueBoxOutput("mediaKbytesAluno", width = 4)
+                valueBoxOutput("mediaKbytesAluno", width = 4),
+                
+                
+                # Gráficos
+                
+                plotOutput("totalAlunosRegiao")
                 
                 
               )
@@ -92,8 +97,8 @@ server <- function(input, output) {
   
   output$mediaDownloadEntorno <- renderValueBox({
     valueBox(
-      value = dbGetQuery(conn, "select round(avg(entorno_download), 2) from dados;"),
-      subtitle = "Média de download no entorno das escolas",
+      value = dbGetQuery(conn, "select round(avg(simet_mean_tcp_down_mbps), 2) from dados;"),
+      subtitle = "Média de TCP/Download no entorno das escolas",
       icon = icon("download"),
       color = "green"
     )
@@ -101,8 +106,8 @@ server <- function(input, output) {
   
   output$mediaUploadEntorno <- renderValueBox({
     valueBox(
-      value = dbGetQuery(conn, "select round(avg(entorno_upload), 2) from dados;"),
-      subtitle = "Média de upload no entorno das escolas",
+      value = dbGetQuery(conn, "select round(avg(simet_mean_tcp_up_mbps), 2) from dados;"),
+      subtitle = "Média de TCP/Upload no entorno das escolas",
       icon = icon("upload"),
       color = "green"
     )
@@ -110,11 +115,20 @@ server <- function(input, output) {
   
   output$mediaKbytesAluno <- renderValueBox({
     valueBox(
-      value = dbGetQuery(conn, "select round(avg(Down_kbps_por_aluno), 2) from dados;"),
-      subtitle = "Média em Kbps de Downloads por aluno das escolas",
+      value = dbGetQuery(conn, "select round(avg(simet_num_measures), 0) from dados
+                                where simet_num_measures is not null;"),
+      subtitle = "Média de medidas ao ano nas escolas",
       icon = icon("download"),
       color = "green"
     )
+  })
+  
+  # GRÁFICOS --------------------------------------------------------------------
+  
+  output$totalAlunosRegiao <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT nm_regiao, sum(escolar_qtematriculas) as matriculas 
+                              from dados GROUP by nm_regiao;")
+    plot(temp)
   })
   
 }
