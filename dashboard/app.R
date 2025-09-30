@@ -1,3 +1,20 @@
+
+# A fazer em menu principal:
+#   Gráficos:
+#   Setores: escolar_tp_rede_local
+    # Barra: Quantidade de alunos por estado
+    # Barra: Quantidade de empresas (empresa1, empresa2)
+    # Setores: Download por aluno (Kbit/s)
+    # Setores: porte_escola por região
+# 
+# 
+# A fazer em menu auditoria:
+#   - Fazer gráfico que verifica quantos NULLs tem na base de dados em cada coluna.
+#   - Gráfico que analisa quantidade de escolas que possuem laboratórios de informática, mas não há aparelhos eletronicos para alunos.
+# 
+# A fazer se der tempo:
+#   Fazer mapa que mostra a distribuição das escolas públicas no brasil.
+
 library(shiny)
 library(shinydashboard)
 library(dplyr)
