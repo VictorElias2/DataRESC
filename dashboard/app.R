@@ -1,6 +1,7 @@
 library(shiny)
 library(shinydashboard)
 library(dplyr)
+library(ggplot2)
 library(readxl)
 
 ui <- dashboardPage(skin = "green",
@@ -35,8 +36,22 @@ ui <- dashboardPage(skin = "green",
                 
                 
                 # Gráficos
-                
-                plotOutput("totalAlunosRegiao")
+                box(title = "Matrículas por região",
+                    plotOutput("totalAlunosRegiao"), width = 4),
+                box(title = "Matriculas por localização",
+                    plotOutput("totalMatriculasLocalizacao"), width = 4),
+                box(title = "Equipamentos eletrônicos por região",
+                    plotOutput("totalEletronicosRegiao"), width = 4),
+                box(title = "Equipamentos eletrônicos por matrícula",
+                    plotOutput("eletronicosMatriculaRegiao"), width = 4),
+                box(title = "Porte das escolas",
+                    plotOutput("porteEscolas"), width = 4),
+                box(title = "Escolas com salas de informatica",
+                    plotOutput("qntSalasInformatica"), width = 4),
+                box(title = "Escolas com internet para os alunos",
+                    plotOutput("qntInternetAlunos"), width = 4),
+                box(title = "Tipo de tencnologia de internet nas escolas",
+                    plotOutput("tipoTecnologiaEscolas"), width = 4)
                 
                 
               )
@@ -128,7 +143,83 @@ server <- function(input, output) {
   output$totalAlunosRegiao <- renderPlot({
     temp <- dbGetQuery(conn, "SELECT nm_regiao, sum(escolar_qtematriculas) as matriculas 
                               from dados GROUP by nm_regiao;")
-    plot(temp)
+    temp %>% 
+      ggplot(aes(x = nm_regiao, y = matriculas)) +
+      geom_col()
+  })
+  
+  output$totalMatriculasLocalizacao <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT escolar_tp_localizacao, sum(escolar_qtematriculas) as matriculas from dados group by escolar_tp_localizacao;")
+    
+    # pie(table(temp$matriculas))
+    temp %>%
+      ggplot(aes(x = "", y = matriculas, fill = escolar_tp_localizacao)) +
+      geom_bar(stat = "identity", width = 1) +
+      coord_polar("y", start = 0)
+  })
+  
+  output$totalEletronicosRegiao <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT nm_regiao, sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) as totals from dados
+                          where escolar_qt_comp_portatil_aluno < 3000 AND escolar_qt_desktop_aluno < 3000 AND escolar_qt_tablet_aluno < 3000 
+                          GROUP by nm_regiao;")
+    
+    temp %>% 
+      ggplot(aes(nm_regiao, totals)) +
+      geom_col()
+  })
+  
+  output$eletronicosMatriculaRegiao <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT nm_regiao, sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) * 1.0 / sum(escolar_qtematriculas) as total from dados
+where escolar_qt_comp_portatil_aluno < 3000 AND escolar_qt_desktop_aluno < 3000 AND escolar_qt_tablet_aluno < 3000 AND escolar_qtematriculas < 3000
+GROUP by nm_regiao;")
+    
+    # pie(table(temp$nm_regiao))
+   temp %>%
+    ggplot(aes(x = "", y = total, fill = nm_regiao)) +
+      geom_bar(stat = "identity", width = 1) +
+      coord_polar("y", start = 0)
+  })
+  
+  output$qntSalasInformatica <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT escolar_in_laboratorio_informatica, count(escolar_in_laboratorio_informatica) as total from dados group by escolar_in_laboratorio_informatica")
+    
+    # temp %>% 
+    #   ggplot(aes(escolar_in_laboratorio_informatica, total)) +
+    #   geom_col()
+    
+    temp %>%
+      ggplot(aes(x = "", y = total, fill = escolar_in_laboratorio_informatica)) +
+      geom_bar(stat = "identity", width = 1) +
+      coord_polar("y", start = 0)
+  })
+  
+  output$qntInternetAlunos <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT escolar_in_internet_alunos, count(escolar_in_internet_alunos) as total from dados group by escolar_in_internet_alunos")
+    
+    # temp %>% 
+    #   ggplot(aes(escolar_in_internet_alunos, total)) +
+    #   geom_col()
+    
+    temp %>%
+      ggplot(aes(x = "", y = total, fill = escolar_in_internet_alunos)) +
+      geom_bar(stat = "identity", width = 1) +
+      coord_polar("y", start = 0)
+  })
+  
+  output$porteEscolas <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT porte_escola, count(porte_escola) as total from dados group by porte_escola")
+    
+    temp %>% 
+      ggplot(aes(porte_escola, total)) +
+      geom_col()
+  })
+  
+  output$tipoTecnologiaEscolas <- renderPlot({
+    temp <- dbGetQuery(conn, "SELECT escolar_tipo_tecnologia, count(escolar_tipo_tecnologia) as total from dados group by escolar_tipo_tecnologia")
+    
+    temp %>% 
+      ggplot(aes(escolar_tipo_tecnologia, total)) +
+      geom_col()
   })
   
 }
