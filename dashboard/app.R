@@ -71,7 +71,7 @@ ui <- dashboardPage(skin = "green",
                 
                 # Matriculas por localização
                 box(title = "Todal de matriculas por localização",
-                    plotOutput("totalMatriculasLocalizacao"), width = 4),
+                    plotlyOutput("totalMatriculasLocalizacao"), width = 4),
                 
                 # Equipamentos eletrônicos por região
                 box(title = "Total de eletrônicos por região",
@@ -79,7 +79,7 @@ ui <- dashboardPage(skin = "green",
                 
                 # Equipamentos eletrônicos para cada 100 alunos por região
                 box(title = "Equipamentos eletrônicos para cada 100 alunos por região",
-                    plotOutput("eletronicosMatriculaRegiao"), width = 4),
+                    plotlyOutput("eletronicosMatriculaRegiao"), width = 4),
                 
                 # Porte das escolas
                 box(title = "Porte das escolas",
@@ -87,11 +87,11 @@ ui <- dashboardPage(skin = "green",
                 
                 # Escolas com salas de informatica
                 box(title = "Escolas com salas de informatica",
-                    plotOutput("qntSalasInformatica"), width = 4),
+                    plotlyOutput("qntSalasInformatica"), width = 4),
                 
                 # Escolas com internet para os alunos
                 box(title = "Escolas com internet para os alunos",
-                    plotOutput("qntInternetAlunos"), width = 4),
+                    plotlyOutput("qntInternetAlunos"), width = 4),
                 
                 # Tipo de tencnologia de internet nas escolas
                 box(title = "Tipo de tecnologia de internet nas escolas",
@@ -99,7 +99,7 @@ ui <- dashboardPage(skin = "green",
                 
                 # Tipo de rede local nas escolas
                 box(title = "Tipo de rede local nas escolas",
-                    plotOutput("tipoRedeLocalEscolas"), width = 4),
+                    plotlyOutput("tipoRedeLocalEscolas"), width = 4),
                 
                 # Quantidade de alunos por estado
                 box(title = "Total de alunos por estado",
@@ -186,7 +186,7 @@ ui <- dashboardPage(skin = "green",
                       plotOutput("AUtotalEletronicosRegiao")),
                   
                   box(title = "Total de eletrônicos para cada 100 alunos por região",
-                      plotOutput("AUeletronicosMatriculaRegiao")),
+                      plotlyOutput("AUeletronicosMatriculaRegiao")),
                   
                   box(title = "Total de eletrônicos para cada 100 alunos por Estado",
                       plotOutput("AUeletronicosPorEstado")),
@@ -208,7 +208,8 @@ ui <- dashboardPage(skin = "green",
       # Seção sobre o sistema, sobre
       tabItem(tabName = "sobre",
               fluidPage(
-                h1("Sobre o dashboard")
+                h1("Sobre o dashboard"),
+                includeHTML(path = "R/sobre.html")
               )
       )
     )
@@ -372,7 +373,8 @@ server <- function(input, output) {
       scale_y_continuous(labels = label_number(decimal.mark = "."),
                          expand = expansion(mult = c(0, .25))) +
       geom_col(fill="#013220") +
-        facet_wrap(~regiao)
+      facet_wrap(~regiao) +
+      labs(x = "Porte da escola", y = "Total de escolas")
   })
   
   # Matrículas por região
@@ -381,17 +383,42 @@ server <- function(input, output) {
                               from dados where nm_regiao is not null GROUP by nm_regiao;") %>% 
       ggplot(aes(x = reorder(nm_regiao, matriculas), y = matriculas)) +
       geom_text(aes(label = format(matriculas, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
-      scale_y_continuous(labels = label_number(decimal.mark = ".")) +
-      geom_col(fill="#013220") 
+      scale_y_continuous(labels = label_number(decimal.mark = "."),
+                         expand = expansion(mult = c(0, .15))) +
+      geom_col(fill="#013220") +
+      labs(x = "Região", y = "Total de matrículas")
   })
   
   # Matriculas por localização
-  output$totalMatriculasLocalizacao <- renderPlot({
-    dbGetQuery(conn, "SELECT escolar_tp_localizacao, sum(escolar_qtematriculas) as matriculas 
-                       from dados group by escolar_tp_localizacao;") %>%
-      ggplot(aes(x = "", y = matriculas, fill = escolar_tp_localizacao)) +
-      geom_bar(stat = "identity", width = 1) +
-      coord_polar("y", start = 0)
+  output$totalMatriculasLocalizacao <- renderPlotly({
+    dados_localizacao <- dbGetQuery(conn, 
+                                    "SELECT escolar_tp_localizacao, COUNT(*) as total 
+     FROM dados 
+     GROUP BY escolar_tp_localizacao;")
+    
+    cores <- c("Rural" = "#004d00",   # Verde bem escuro
+               "Urbana" = "#008000")  # Verde mais claro
+    
+    plot_ly(
+      data = dados_localizacao,
+      labels = ~escolar_tp_localizacao,
+      values = ~total,
+      type = 'pie',
+      sort = FALSE, # Mantém a ordem da consulta
+      marker = list(colors = cores[dados_localizacao$escolar_tp_localizacao]), # Aplica as cores
+      textinfo = 'percent',
+      hoverinfo = 'text',
+      text = ~paste(
+        '<b>', escolar_tp_localizacao, '</b>',
+        '<br>', total, 'escolas',
+        '<br>', round(total / sum(total) * 100, 1), '%'
+      )
+    ) %>%
+      layout(
+        # title = list(text = "<b>Distribuição por Localização</b>", x = 0.5),
+        legend = list(title = list(text = '<b>Localização</b>')),
+        showlegend = TRUE
+      )
   })
   
   # Equipamentos eletrônicos por região
@@ -403,33 +430,102 @@ server <- function(input, output) {
       ggplot(aes(reorder(nm_regiao, totals), totals)) +
       geom_text(aes(label = format(totals, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
       scale_y_continuous(labels = label_number(decimal.mark = ".")) +
+      labs(x = "Região", y = "Total de eletrônicos") +
+      # theme_void() +
       geom_col(fill="#013220") 
   })
   
   # Equipamentos eletrônicos para cada 100 alunos por região
-  output$eletronicosMatriculaRegiao <- renderPlot({
-    dbGetQuery(conn, "SELECT nm_regiao, (sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) * 1.0 / sum(escolar_qtematriculas)) * 100 as total from dados
-where escolar_qt_comp_portatil_aluno < 3000 AND escolar_qt_desktop_aluno < 3000 AND escolar_qt_tablet_aluno < 3000 AND escolar_qtematriculas < 3000
-GROUP by nm_regiao;") %>%
-    ggplot(aes(x = "", y = total, fill = nm_regiao)) +
-      geom_bar(stat = "identity", width = 1) +
-      coord_polar("y", start = 0)
+  output$eletronicosMatriculaRegiao <- renderPlotly({
+    dados_grafico <- dbGetQuery(conn, "SELECT nm_regiao, (sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) * 1.0 / sum(escolar_qtematriculas)) * 100 as total from dados
+where escolar_qt_comp_portatil_aluno < 3000 AND escolar_qt_desktop_aluno < 3000 AND escolar_qt_tablet_aluno < 3000 AND escolar_qtematriculas < 3000 AND nm_regiao is not null
+GROUP by nm_regiao;")
+    
+      cores_regioes <- c("CENTRO-OESTE" = "#004d00",
+                         "NORDESTE" = "#008000",
+                         "NORTE" = "#005910",
+                         "SUDESTE" = "#003019",
+                         "SUL" = "#003089")
+      
+      
+      plot_ly(
+        data = dados_grafico,
+        labels = ~nm_regiao,  # Coluna para os rótulos das fatias
+        values = ~total,      # Coluna para os valores (tamanho das fatias)
+        type = 'pie',         # Define o tipo de gráfico como 'pie' (pizza)
+        marker = list(colors = cores_regioes[dados_grafico$nm_regiao]), # Aplica as cores personalizadas
+        textinfo = 'label+value', # Mostra o rótulo e a porcentagem em cada fatia
+        hoverinfo = 'text', # Define a informação que aparece ao passar o mouse
+        text = ~paste(nm_regiao, '<br>', round(total, 2), '%') # Texto customizado para o hover
+      ) %>% 
+        layout(
+          # title = "Percentual de Equipamentos por Matrícula por Região", # Adiciona um título ao gráfico
+          showlegend = TRUE # Garante que a legenda seja exibida
+        )
   })
   
-  output$qntSalasInformatica <- renderPlot({
-    dbGetQuery(conn, "SELECT escolar_in_laboratorio_informatica, count(escolar_in_laboratorio_informatica) as total
-                       from dados group by escolar_in_laboratorio_informatica") %>%
-      ggplot(aes(x = "", y = total, fill = escolar_in_laboratorio_informatica)) +
-      geom_bar(stat = "identity", width = 1) +
-      coord_polar("y", start = 0)
+  output$qntSalasInformatica <- renderPlotly({
+    dados_localizacao <- dbGetQuery(conn, "SELECT escolar_in_laboratorio_informatica, count(*) as total
+                       from dados group by escolar_in_laboratorio_informatica")
+      
+      cores <- c("Nao" = "#004d00",   # Verde bem escuro
+                 "Sim" = "#008000")  # Verde mais claro
+      
+      plot_ly(
+        data = dados_localizacao,
+        labels = ~escolar_in_laboratorio_informatica,
+        values = ~total,
+        type = 'pie',
+        sort = FALSE, # Mantém a ordem da consulta
+        marker = list(colors = cores[dados_localizacao$escolar_in_laboratorio_informatica]), # Aplica as cores
+        textinfo = 'percent',
+        hoverinfo = 'text',
+        text = ~paste(
+          '<b>', escolar_in_laboratorio_informatica, '</b>',
+          '<br>', total, 'escolas',
+          '<br>', round(total / sum(total) * 100, 1), '%'
+        )
+      ) %>%
+        layout(
+          # title = list(text = "<b>Distribuição por Localização</b>", x = 0.5),
+          legend = list(title = list(text = '<b>Localização</b>')),
+          showlegend = TRUE
+        )
   })
   
-  output$qntInternetAlunos <- renderPlot({
-    dbGetQuery(conn, "SELECT escolar_in_internet_alunos, count(*) as total 
-                       from dados group by escolar_in_internet_alunos") %>%
-      ggplot(aes(x = "", y = total, fill = escolar_in_internet_alunos)) +
-      geom_bar(stat = "identity", width = 1) +
-      coord_polar("y", start = 0)
+  output$qntInternetAlunos <- renderPlotly({
+    
+    dados_internet <- dbGetQuery(conn, 
+                                 "SELECT escolar_in_internet_alunos, COUNT(*) as total 
+     FROM dados 
+     GROUP BY escolar_in_internet_alunos;")
+    
+    cores <- c("Nao" = "#004d00",
+               "Sim" = "#008000")
+    
+    
+    plot_ly(
+      data = dados_internet,
+      labels = ~escolar_in_internet_alunos,
+      values = ~total,
+      type = 'pie',
+      sort = FALSE,
+      marker = list(colors = cores[dados_internet$escolar_in_internet_alunos]),
+      
+      # Exibe os valores absolutos nas fatias, como solicitado anteriormente
+      textinfo = 'value',
+      
+      hoverinfo = 'text',
+      text = ~paste(
+        '<b>Internet para Alunos:</b>', escolar_in_internet_alunos,
+        '<br><b>Total de Escolas:</b>', total
+      )
+    ) %>%
+      layout(
+        # title = list(text = "<b>Acesso à Internet para Alunos</b>", x = 0.5),
+        legend = list(title = list(text = '<b>Disponibilidade</b>')),
+        showlegend = TRUE
+      )
   })
   
   output$porteEscolas <- renderPlot({
@@ -437,7 +533,8 @@ GROUP by nm_regiao;") %>%
       ggplot(aes(reorder(porte_escola, total), total)) +
       geom_text(aes(label = format(total, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
       scale_y_continuous(labels = label_number(decimal.mark = ".")) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "Porte da escola", y = "Total de escolas")
   })
   
   output$tipoTecnologiaEscolas <- renderPlot({
@@ -448,15 +545,46 @@ GROUP by nm_regiao;") %>%
       ggplot(aes(reorder(escolar_tipo_tecnologia, total), total)) +
       geom_text(aes(label = format(total, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
       scale_y_continuous(labels = label_number(decimal.mark = ".")) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "Tipo de tecnologia", y = "Total de escolas")
   })
   
-  output$tipoRedeLocalEscolas <- renderPlot({
-    dbGetQuery(conn, "SELECT escolar_tp_rede_local, count(*) as total 
-               from dados group by escolar_tp_rede_local") %>% 
-      ggplot(aes(x = "", y = total, fill = escolar_tp_rede_local)) +
-      geom_bar(stat = "identity", width = 1) +
-      coord_polar("y", start = 0)
+  output$tipoRedeLocalEscolas <- renderPlotly({
+    dados_rede <- dbGetQuery(conn, 
+                             "SELECT escolar_tp_rede_local, count(*) as total 
+     FROM dados 
+     GROUP BY escolar_tp_rede_local;")
+    
+    
+    cores_verdes <- c("Cabo" = "#006400",               # Verde escuro
+                      "Cabo e Wireless" = "#228B22",     # Verde floresta
+                      "Não há rede local" = "#004d00",   # Verde bem escuro
+                      "Não informado" = "#013220",       # Verde pinho (quase preto)
+                      "Wireless" = "#32CD32")           # Verde limão
+    
+    
+    plot_ly(
+      data = dados_rede,
+      labels = ~escolar_tp_rede_local,
+      values = ~total,
+      type = 'pie',
+      sort = FALSE,
+      marker = list(colors = cores_verdes[dados_rede$escolar_tp_rede_local]), # Usando a nova paleta
+      
+      # Exibe os valores absolutos nas fatias
+      textinfo = 'percent',
+      
+      hoverinfo = 'text',
+      text = ~paste(
+        '<b>Tipo de Rede:</b>', escolar_tp_rede_local,
+        '<br><b>Total de Escolas:</b>', total
+      )
+    ) %>%
+      layout(
+        # title = list(text = "<b>Distribuição por Tipo de Rede Local</b>", x = 0.5),
+        legend = list(title = list(text = '<b>Tipo de Rede</b>')),
+        showlegend = TRUE
+      )
   })
   
   output$alunosPorEstado <- renderPlot({
@@ -467,7 +595,8 @@ GROUP by nm_regiao;") %>%
       scale_x_continuous(labels = label_number(decimal.mark = "."),
                          expand = expansion(mult = c(0, .25))) +
       geom_text(aes(label = format(total, big.mark = ".")), hjust = -0.1, vjust = 0.5) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "Estado", y = "Total de alunos")
   })
   
   output$eletronicosPorEstado <- renderPlot({
@@ -478,7 +607,8 @@ GROUP by nm_estado;") %>%
       scale_x_continuous(#labels = label_number(decimal.mark = "."),
                          expand = expansion(mult = c(0, .25))) +
       geom_text(aes(label = format(round(total, digits = 0), big.mark = ".", trim = T)), hjust = -0.1, vjust = 0.5) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "Estado", y = "Total de aparelhos eletrônicos")
   })
   
   output$empresaFornecedoraPrimaria <- renderPlot({
@@ -488,7 +618,8 @@ GROUP by nm_estado;") %>%
       scale_x_continuous(labels = label_number(decimal.mark = "."),
                          expand = expansion(mult = c(0, .25))) +
       geom_text(aes(label = format(total, big.mark = ".")), hjust = -0.1, vjust = 0.5) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "Empresa", y = "Total de escolas")
   })
   
   output$empresaFornecedoraSecundaria <- renderPlot({
@@ -499,7 +630,8 @@ GROUP by nm_estado;") %>%
       scale_x_continuous(labels = label_number(decimal.mark = "."),
                          expand = expansion(mult = c(0, .25))) +
       geom_text(aes(label = format(total, big.mark = ".")), hjust = -0.1, vjust = 0.5) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "Empresa", y = "Total de escolas")
   })
   
   # output$downloadKbitsAluno <- renderPlot({
@@ -512,8 +644,6 @@ GROUP by nm_estado;") %>%
   output$mapaTotal <- renderPlot({
     mapa_brasil_df <- map_data("world", region = "Brazil")
     
-    # 2.2 - Dataframe das escolas, com a query corrigida
-    #      Note os parênteses na cláusula WHERE para garantir a lógica correta.
     query_corrigida <- "
                       SELECT 
                           escolar_no_entidade, 
@@ -532,29 +662,20 @@ GROUP by nm_estado;") %>%
     temp <- dbGetQuery(conn, query_corrigida)
     
     
-    # --- PASSO 3: CRIAR O GRÁFICO (AGORA COM OS DADOS PRONTOS) ---
-    
     ggplot() +
-      # Camada 1: O contorno do Brasil
-      # Usa os dados de 'mapa_brasil_df' e suas colunas 'long' e 'lat'
       geom_polygon(
         data = mapa_brasil_df, 
         aes(x = long, y = lat, group = group), 
         fill = "gray85",
         color = "white"
       ) +
-      
-      # Camada 2: Os pontos das escolas
-      # Usa os dados de 'temp' e suas colunas 'longitude' e 'latitude'
       geom_point( 
         data = temp,
-        aes(x = longitude, y = latitude), # Corrigido de 'templongitude'
+        aes(x = longitude, y = latitude),
         color = "#4b9e4b",
         size = 0.1,
         alpha = 0.7
       ) +
-      
-      # Ajustes finais para deixar o mapa limpo
       labs(
         x = "", 
         y = ""
@@ -565,7 +686,7 @@ GROUP by nm_estado;") %>%
   
 
 # AUDITORIA ---------------------------------------------------------------
-  #+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno
+  
   output$AUDdesktopEletronicosRegiao <- renderTable({
     dbGetQuery(conn, "SELECT nm_estado, MAX(escolar_qt_desktop_aluno) as total from dados
                       group by nm_estado;")
@@ -584,8 +705,6 @@ GROUP by nm_estado;") %>%
   output$mapa <- renderPlotly({
     mapa_brasil_df <- map_data("world", region = "Brazil")
     
-    # 2.2 - Dataframe das escolas, com a query corrigida
-    #      Note os parênteses na cláusula WHERE para garantir a lógica correta.
     query_corrigida <- "
                       SELECT 
                           escolar_no_entidade, 
@@ -600,24 +719,17 @@ GROUP by nm_estado;") %>%
                           AND longitude IS NOT NULL 
                           AND latitude IS NOT NULL;
                       "
-    # Execute a query e salve no dataframe 'temp'
+    
     temp <- dbGetQuery(conn, query_corrigida)
     
     
-    # --- PASSO 3: CRIAR O GRÁFICO (AGORA COM OS DADOS PRONTOS) ---
-    
     ggplot() +
-      # Camada 1: O contorno do Brasil
-      # Usa os dados de 'mapa_brasil_df' e suas colunas 'long' e 'lat'
       geom_polygon(
         data = mapa_brasil_df, 
         aes(x = long, y = lat, group = group), 
         fill = "gray85",
         color = "white"
       ) +
-      
-      # Camada 2: Os pontos das escolas
-      # Usa os dados de 'temp' e suas colunas 'longitude' e 'latitude'
       geom_point( 
         data = temp,
         aes(x = longitude, y = latitude, text = paste("Escola:", escolar_no_entidade)), # Corrigido de 'templongitude'
@@ -625,8 +737,6 @@ GROUP by nm_estado;") %>%
         size = 2,
         alpha = 0.7
       ) +
-      
-      # Ajustes finais para deixar o mapa limpo
       labs(
         title = "Localização de Escolas com Mais de 8.000 Dispositivos",
         x = "", 
@@ -639,8 +749,6 @@ GROUP by nm_estado;") %>%
   output$mapaSemMatricula <- renderPlotly({
     mapa_brasil_df <- map_data("world", region = "Brazil")
     
-    # 2.2 - Dataframe das escolas, com a query corrigida
-    #      Note os parênteses na cláusula WHERE para garantir a lógica correta.
     query_corrigida <- "
                       SELECT 
                           escolar_no_entidade, 
@@ -651,26 +759,17 @@ GROUP by nm_estado;") %>%
                       WHERE 
                           escolar_qtematriculas = 0 
                           AND longitude IS NOT NULL 
-                          AND latitude IS NOT NULL;
-                      "
-    # Execute a query e salve no dataframe 'temp'
+                          AND latitude IS NOT NULL;"
+                          
     temp <- dbGetQuery(conn, query_corrigida)
     
-    
-    # --- PASSO 3: CRIAR O GRÁFICO (AGORA COM OS DADOS PRONTOS) ---
-    
     ggplot() +
-      # Camada 1: O contorno do Brasil
-      # Usa os dados de 'mapa_brasil_df' e suas colunas 'long' e 'lat'
       geom_polygon(
         data = mapa_brasil_df, 
         aes(x = long, y = lat, group = group), 
         fill = "gray85",
         color = "white"
       ) +
-      
-      # Camada 2: Os pontos das escolas
-      # Usa os dados de 'temp' e suas colunas 'longitude' e 'latitude'
       geom_point( 
         data = temp,
         aes(x = longitude, y = latitude, text = paste("Escola:", escolar_no_entidade)), # Corrigido de 'templongitude'
@@ -678,8 +777,6 @@ GROUP by nm_estado;") %>%
         size = 2,
         alpha = 0.7
       ) +
-      
-      # Ajustes finais para deixar o mapa limpo
       labs(
         title = "Localização de Escolas sem matrículas mas ativas",
         x = "", 
@@ -703,16 +800,34 @@ GROUP by nm_estado;") %>%
       ggplot(aes(reorder(nm_regiao, totals), totals)) +
       geom_text(aes(label = format(totals, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
       scale_y_continuous(labels = label_number(decimal.mark = ".")) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "Região", "Total de aparelhos eletrônicos")
   })
   
   # Equipamentos eletrônicos para cada 100 alunos por região
-  output$AUeletronicosMatriculaRegiao <- renderPlot({
-    dbGetQuery(conn, "SELECT nm_regiao, (sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) * 1.0 / sum(escolar_qtematriculas)) * 100 as total from dados
-                      GROUP by nm_regiao;") %>% 
-      ggplot(aes(x = "", y = total, fill = nm_regiao)) +
-      geom_bar(stat = "identity", width = 1) +
-      coord_polar("y", start = 0)
+  output$AUeletronicosMatriculaRegiao <- renderPlotly({
+    dados_grafico <- dbGetQuery(conn, "SELECT nm_regiao, (sum(escolar_qt_desktop_aluno+escolar_qt_comp_portatil_aluno+escolar_qt_tablet_aluno) * 1.0 / sum(escolar_qtematriculas)) * 100 as total from dados GROUP by nm_regiao;")
+    
+    cores_regioes <- c("CENTRO-OESTE" = "#004d00",
+                       "NORDESTE" = "#008000",
+                       "NORTE" = "#005910",
+                       "SUDESTE" = "#003019",
+                       "SUL" = "#003089")
+    
+    plot_ly(
+      data = dados_grafico,
+      labels = ~nm_regiao,  # Coluna para os rótulos das fatias
+      values = ~total,      # Coluna para os valores (tamanho das fatias)
+      type = 'pie',         # Define o tipo de gráfico como 'pie' (pizza)
+      marker = list(colors = cores_regioes[dados_grafico$nm_regiao]), # Aplica as cores personalizadas
+      textinfo = 'label+value', # Mostra o rótulo e a porcentagem em cada fatia
+      hoverinfo = 'text', # Define a informação que aparece ao passar o mouse
+      text = ~paste(nm_regiao, '<br>', round(total, 0)) # Texto customizado para o hover
+    ) %>% 
+      layout(
+        # title = "Percentual de Equipamentos por Matrícula por Região", # Adiciona um título ao gráfico
+        showlegend = TRUE # Garante que a legenda seja exibida
+      )
   })
   
   # Equipamentos eletrônicos para cada 100 alunos por região
@@ -723,7 +838,8 @@ GROUP by nm_estado;") %>%
       scale_x_continuous(labels = label_number(decimal.mark = "."),
                          expand = expansion(mult = c(0, .25))) +
       geom_text(aes(label = format(round(total, 0), big.mark = ".")), hjust = -0.1, vjust = 0.5) +
-      geom_col(fill="#013220")
+      geom_col(fill="#013220") +
+      labs(x = "Estado", "Total de alunos")
   })
   
   output$AUtipoTecnologiaEscolas <- renderPlot({
@@ -732,7 +848,8 @@ GROUP by nm_estado;") %>%
       ggplot(aes(reorder(escolar_tipo_tecnologia, total), total)) +
       geom_text(aes(label = format(total, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
       scale_y_continuous(labels = label_number(decimal.mark = ".")) +
-      geom_col(fill="#013220") 
+      geom_col(fill="#013220") +
+      labs(x = "tipo de tecnologia", "Total de escolas")
   })
   
 }
