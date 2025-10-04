@@ -34,7 +34,7 @@ RUN R -e "install.packages('remotes', repos='http://cran.rstudio.com/'); \
 
 RUN rm -r /srv/shiny-server/*
 
-COPY . /srv/shiny-server/dataresc/
+COPY . /srv/shiny-server/
 
 VOLUME ["/srv/shiny-server/dados"]
 
