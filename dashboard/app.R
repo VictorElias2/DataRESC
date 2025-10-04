@@ -801,7 +801,7 @@ GROUP by nm_estado;") %>%
       geom_text(aes(label = format(totals, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
       scale_y_continuous(labels = label_number(decimal.mark = ".")) +
       geom_col(fill="#013220") +
-      labs(x = "Região", "Total de aparelhos eletrônicos")
+      labs(x = "Região", y = "Total de aparelhos eletrônicos")
   })
   
   # Equipamentos eletrônicos para cada 100 alunos por região
@@ -839,7 +839,7 @@ GROUP by nm_estado;") %>%
                          expand = expansion(mult = c(0, .25))) +
       geom_text(aes(label = format(round(total, 0), big.mark = ".")), hjust = -0.1, vjust = 0.5) +
       geom_col(fill="#013220") +
-      labs(x = "Estado", "Total de alunos")
+      labs(x = "Estado", y = "Total de alunos")
   })
   
   output$AUtipoTecnologiaEscolas <- renderPlot({
@@ -849,7 +849,7 @@ GROUP by nm_estado;") %>%
       geom_text(aes(label = format(total, big.mark = ".")), hjust = 0.5, vjust = -0.2) +
       scale_y_continuous(labels = label_number(decimal.mark = ".")) +
       geom_col(fill="#013220") +
-      labs(x = "tipo de tecnologia", "Total de escolas")
+      labs(x = "tipo de tecnologia", y = "Total de escolas")
   })
   
 }
