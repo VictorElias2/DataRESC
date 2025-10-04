@@ -1,0 +1,12 @@
+.gitignore
+.RData
+.Rhistory
+analise_files/
+Analise.pdf
+analise.qmd
+Analise.qmd
+Analise.rmarkdown
+analiseSalarios.Rproj
+conhecimentos_de_dados.qmd
+README.md
+Dockerfile
