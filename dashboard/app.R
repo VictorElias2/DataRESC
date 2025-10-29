@@ -36,7 +36,7 @@ ui <- dashboardPage(skin = "green",
     )
   ),
   dashboardBody(
-    h1("Dataresc - Dados de redes de comunicação das escolas públicas brasileiras"),
+    h1("Dataresc - Dados de internet das escolas públicas brasileiras"),
     
     
     tabItems(
