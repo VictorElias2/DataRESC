@@ -1,1 +1,2 @@
-Anotação de trabalho
+## DATARESC
+Projeto realizado para a disciplina de Auditoria de Sistemas, cujo objetivo era desenvolver um dashboard que analisa dados de toda a conexão de rede de internet das escolas públicas brasileiras, com o intuito de achar brechas nos dados e verificar se a integridade e veracidade da base é plausível. Foram utilizadas tecnologias desenvolvidas em R e seus pacotes principais do tidyverse, além do Shiny.
